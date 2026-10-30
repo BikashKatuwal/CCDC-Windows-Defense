@@ -1,0 +1,56 @@
+CCDC Windows Defense — Script Guide
+A small collection of read-only Windows PowerShell scripts for practicing Windows defense during Collegiate Cyber Defense Competition (CCDC) preparation. Designed for Windows Server, Active Directory/DNS labs, and Windows workstations.
+Important: These are training utilities, not complete security solutions. Review the code and any competition-specific rules before using it in an event. The scripts do not disable accounts, change passwords, block ports, or remove malware.
+
+Which script should I run?
+Script	Purpose	When to use	Results
+CCDC-Windows-Baseline.ps1 (v1.0)	Take a detailed picture of the system's current security configuration.	On initial inspection and whenever you want a full audit.	Time-stamped text reports in C:\CCDC-Baselines\<COMPUTER>_<TIMESTAMP>\
+CCDC-Change-Detector.ps1 (v2.0)	Compare account, privilege, service, startup-task, port, and firewall-profile inventories to an initial reference.	Once to create a reference, then repeatedly to find changes.	JSON snapshots and text change reports in C:\CCDC-ChangeDetection\<COMPUTER>\
+
+
+Version 1 — Windows baseline
+What it checks: System identity and IP configuration, local and domain users and administrator memberships, processes, services, network connections and listening ports, scheduled tasks, startup entries, firewall profiles/rules, AD/DNS information, SMB shares, certificates, and recent security/system events. Some sections depend on the computer's role and installed modules.
+
+What it does not do: It doesn't fix findings, change configuration, install software, or compare results automatically.
+
+Run in an elevated Windows PowerShell window after reviewing the script:
+cd C:\CCDC
+.\CCDC-Windows-Baseline.ps1
+At the end, PowerShell prints Baseline completed: <folder>. To see saved reports:
+explorer C:\CCDC-Baselines
+Review collection-errors.txt in the timestamped results folder; an empty error file is encouraging, but does not guarantee every report is complete.
+Version 2 — Change detector
+What it compares: Domain users, Domain Admins membership, local Administrators membership (on non-DC hosts), service definitions, scheduled tasks and their actions, listening TCP endpoints, and firewall profile settings.
+
+First run: Captures the current state and saves a reference.json file. It does not generate a change report on the first run. Review that reference before treating it as trustworthy.
+
+Later runs: Capture a new snapshot, compare it to the original reference, and write a text report showing ADDED, REMOVED, or SKIPPED entries. SKIPPED means a category could not be compared, not that everything is safe.
+cd C:\CCDC
+.\CCDC-Change-Detector.ps1 -OpenReport
+Where results go:
+C:\CCDC-ChangeDetection\DC01\
+  reference.json
+  History\
+    snapshot_<TIMESTAMP>.json
+    changes_<TIMESTAMP>.txt
+-OpenReport opens the text report in Notepad on comparison runs. Open the results folder manually with:
+explorer C:\CCDC-ChangeDetection
+Example practice: Capture a reference in an isolated Proxmox lab; create a harmless, unprivileged test AD account; run the detector again. The report should show that account as ADDED. Remove the test account after the exercise and confirm normal authentication and DNS service operation.
+Important limitations and safe practices
+- Changes are not proof of an attack. Windows updates and legitimate administrator actions can appear as findings.
+- No differences doesn't prove the host is safe. This is a periodic comparison, not real-time monitoring; an attacker can be present before the reference or perform actions not covered by the script.
+- Do not automatically block all ports or disable unknown accounts. Required AD, DNS, web, file-sharing, and scoring services need to stay available.
+- Both scripts write files to the local computer; neither uploads reports to GitHub.
+- Reports can expose usernames, internal IP addresses, service paths, and other sensitive system details. Do not commit report folders, snapshots, credentials, private keys, or competition packets to a public repository.
+- Review and verify downloaded scripts before running them. Use an elevated Windows PowerShell session to capture data requiring administrator access.
+- Check the current competition packet and obtain event approval for team-written scripts where required; publishing a script on GitHub alone does not establish eligibility.
+Repository layout
+CCDC-Windows-Defense/
+  README.md                       # This guide
+  CCDC-Windows-Baseline.ps1       # Full read-only inventory
+  CCDC-Change-Detector.ps1        # Reference and difference reports
+Future work
+- Service health checks (DNS queries, AD login, HTTP response, SMB access)
+- More readable prioritized change reports
+- Controlled, manually approved remediation with verification and rollback
+Goal: Detect meaningful changes without disrupting the services that CCDC scores.
